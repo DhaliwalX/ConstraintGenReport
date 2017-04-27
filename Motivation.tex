@@ -1,0 +1,15 @@
+\section{Motivation}
+
+Most of the points-to analyses depend only on the pointer assignments in
+the source code. Other assignments for such analyses doesn't matter because
+they do not affect pointers. For implementing these analyses, the
+first step would be to extract these assignments from the IR which is quite a 
+waste of time if someone has to write a number of such analysis. So instead of
+wasting time on writing code for extracting these statements, this library 
+provides an API for doing so easily. The implementer now only has to focus on 
+implementing the analysis.
+
+This library has been designed by keeping in mind the forward and backward
+analysis and top-down and bottom-up analyses. So it generates constraint
+without depending on the flow or context information.
+

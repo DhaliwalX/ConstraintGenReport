@@ -1,0 +1,41 @@
+\documentclass{report}
+
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{blindtext}
+\usepackage{courier}
+
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\lstset{framextopmargin=50pt}
+%%%
+% \usepackage{geometry}
+% \geometry{
+% a4paper,
+% total={170mm,257mm},
+% left=20mm,
+% top=20mm,
+% }
+%%% 
+ 
+% Title Page
+\title{ConstraintGen Library for LLVM}
+\author{Pushpinder Singh}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+
+This document describes constraintgen library for generating points-to 
+constraints for LLVM IR. Most of the points-to analysis depends on common 
+properties of pointers present in the source code. These properties for each 
+pointer in the source code can be gathered by using this library for LLVM IR.
+
+\end{abstract}
+
+
+\include{Introduction}
+\include{Motivation}
+\include{constraintgen}
+
+\end{document}          

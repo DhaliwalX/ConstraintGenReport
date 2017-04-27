@@ -1,0 +1,15 @@
+\chapter{Introduction}
+
+A number of points-to analysis have been developed. All these analysis have one 
+thing in common that they depend upon some common properties of the pointers 
+present in the source code of a program. These properties include information 
+like the assignments to the pointers, type information, or level of indirection.
+This information can represented in the form of set of constraints. These 
+constraints correspond to the assignments in the source code. Only those 
+assignments matter in which there is a write/read to pointer variable.
+
+This library tries to extract this type of information in form of constraints 
+from LLVM IR. It provides set of well defined APIs for generating constraints 
+from LLVM IR.
+
+Section 2 discusses about the 
