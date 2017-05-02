@@ -1,8 +1,21 @@
-\documentclass{report}
-
-\usepackage{hyperref}
+\documentclass[a4paper,11pt]{report}
+\usepackage{graphics}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{array,longtable}
 \usepackage{listings}
+\usepackage{float}
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{xcolor}
 \usepackage{blindtext}
+\usepackage{pstricks}
+\usepackage{pst-node}
+\usepackage{pst-grad}
+\usepackage{pst-coil}
+\usepackage{pst-text}
+\usepackage{etex}
+\usepackage{array,longtable}
 \usepackage{courier}
 
 \lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
@@ -33,9 +46,459 @@ pointer in the source code can be gathered by using this library for LLVM IR.
 
 \end{abstract}
 
+\tableofcontents
 
-\include{Introduction}
-\include{Motivation}
-\include{constraintgen}
+\chapter{Introduction}
+
+A number of points-to analysis have been developed. All these analysis have one 
+thing in common that they depend upon some common properties of the pointers 
+present in the source code of a program. These properties include information 
+like the assignments to the pointers, type information, or level of indirection.
+This information can represented in the form of set of constraints. These 
+constraints correspond to the assignments in the source code. Only those 
+assignments matter in which there is a write/read to pointer variable.
+
+This library tries to extract this type of information in form of constraints 
+from LLVM IR. It provides set of well defined APIs for generating constraints 
+from LLVM IR.
+
+\section{Motivation}
+Most of the points-to analyses depend only on the pointer assignments in
+the source code. Other assignments for such analyses doesn't matter because
+they do not affect pointers. For implementing these analyses, the
+first step would be to extract these assignments from the IR which is quite a 
+waste of time if someone has to write a number of such analysis. So instead of
+wasting time on writing code for extracting these statements, this library 
+provides an API for doing so easily. The implementer now only has to focus on 
+implementing the analysis.
+
+This library has been designed by keeping in mind the forward and backward
+analysis and top-down and bottom-up analyses. So it generates constraint
+without depending on the flow or context information.
+
+\chapter{Constraint Gen library}
+
+Constraint gen library is designed to generate Points-to constraints from the
+LLVM Intermediate Code. In order to generate the constraints, it classifies the
+various LLVM IR instructions into four basic pointer assignments as described 
+in Section 2.2. This library considers only those LLVM IR statements which are
+relevant for \textit{Points-to Analysis} i.e. only those instructions in which 
+there is 
+read/write to a pointer. This library is completely context and flow 
+insensitive. So given any instructions in any order, it will sure generate 
+constraint. So, if someone tries to do a forward flow analysis or backward flow 
+analysis, or Context sensitive or insensitive, this library will be helpful for 
+every case.
+
+
+\section{Design}
+The design of this library is motivated by the fact that most of the points-to 
+analysis depends on the pointers used in the source code. So it is designed 
+such that it can cover the requirements of the most of the Points-to analyses.
+
+All the information about a variable is stored in a Points-to Node 
+(PointsToNode in implementation). Internally this library creates a mapping 
+between those PointsToNode and LLVM's Value (every variable or instruction is 
+represented by this Value). Each Points-to node is assigned a unique id. This 
+id is an unsigned integer. Each constraint represents a single assignment in 
+the IR. Section 2.3 discusses more about implementation level details 
+of a single constraint.
+
+This library tries to simplify the complex LLVM IR statements into four basic 
+pointer assignments. Section 2.2 discusses about the classification of LLVM IR 
+statements.
+
+\section{Classification of LLVM Instructions}
+Following four basic categories are used to classify the relevant LLVM 
+Instructions:
+
+\begin{itemize}
+    \item Address Of Instructions, e.g. a = \&b
+    \item Load Instructions, e.g.  a = *b
+    \item Store Instructions, e.g. *a = b
+    \item Copy Instructions, e.g. a = b
+\end{itemize}
+
+\subsection{Address Of Instructions}
+Address of instructions are those instructions which refers to the assignment 
+in which address of some variable is assigned to some other variable/pointer.
+Address of instruction corresponds to following standard C statement,
+    
+\begin{lstlisting}
+    a = &b
+\end{lstlisting}
+
+In LLVM, this is satisfied by alloca and getelementptr instruction.
+Alloca instruction allocates memory in the stack and returns a pointer to it.
+Whereas, getelementptr instruction takes a base address and computes the address
+of element relative to base address using the provided arguments.
+Example,
+
+\begin{lstlisting}
+%a = alloca i32, i32 4
+%b = getelementptr i32, i32* %a, i32 1   ;select second element                 
+ 
+                       
+\end{lstlisting}
+
+\noindent
+First statement is equivalent to, (here b is memory being allocated in stack)
+
+\begin{lstlisting}
+    a = &b
+\end{lstlisting}
+
+\noindent
+And the second statement is equivalent to, (b should not be confused with 
+previous example)
+\begin{lstlisting}
+    b = &a[1]
+\end{lstlisting}
+
+\noindent
+Following statements are classified as address-of instructions
+\begin{itemize}
+    \item \texttt{alloca}
+    \item \texttt{getelementptr}
+\end{itemize}
+
+\subsection{Load Instructions}
+Load instructions are those assignments in which the address stored at the 
+location pointed by a pointer is assigned to another pointer. So, we are 
+basically dereferencing the pointer which points to another pointer and address 
+stored in that pointer is assigned to other variable/pointer.
+load instruction in LLVM can be used to represent following C statement,
+\begin{lstlisting}
+    a = *b
+\end{lstlisting}
+
+\noindent
+Load instruction in LLVM takes an address and reads memory from that address,
+e.g.,
+
+\begin{lstlisting}
+    %a = load i32*, i32** %b
+\end{lstlisting}
+
+\noindent
+Here \texttt{load} instruction will read the memory from the location pointed 
+by \texttt{\%b} and will store the value read into the \texttt{\%a}.
+
+\noindent
+Instruction that satisfies this type is,
+\begin{itemize}
+ \item \texttt{load}
+\end{itemize}
+
+
+\subsection{Store Instructions}
+Store instructions are those assignments in which address stored in a pointer 
+is assigned to the location pointed by another pointer.
+store instruction in LLVM is equivalent to following C statement,
+\begin{lstlisting}
+    *a = b
+\end{lstlisting}
+
+\noindent
+Store instruction in LLVM writes to the memory at address provided as second
+argument. First argument is the value which has to be written.
+Example,
+\begin{lstlisting}
+    store i32* %b, i32** %a
+\end{lstlisting}
+
+\noindent
+Constraint-gen library ignores those store statements which do not write address
+to memory or which involves writing non pointer values to the memory. So the
+following store statements in the IR will be ignored,
+
+\begin{lstlisting}
+    store i32 10, i32* %a
+\end{lstlisting}
+
+\noindent
+Instruction that satisfies this type is,
+\begin{itemize}
+ \item \texttt{store}
+\end{itemize}
+
+
+\subsection{Copy Instructions}
+Copy instructions are those instructions which involve copying of the address 
+from one SSA variable to another. For e.g. in phi instruction
+\begin{lstlisting}
+    %b = phi i32* [ %a, %one ], [ %c, %two ]
+\end{lstlisting}
+
+\noindent
+It is equivalent to the following C statement,
+\begin{lstlisting}
+    a = b;
+\end{lstlisting}
+
+\noindent
+Following instructions satisifies this constraint,
+\begin{itemize}
+    \item \texttt{phi}
+    \item \texttt{select}
+    \item \texttt{extractvalue}
+    \item \texttt{insertvalue}
+\end{itemize}
+
+More details about the constraint being generated for each instruction are
+mentioned in next section.
+
+\section{Constraints and their Generation}
+Constraints are the information about the pointers assignemnts used in a 
+particular IR statement. A single constraint refers to a single possible 
+assignment. This assignment can be one of above four type. Each constraint has 
+the following properties,
+
+\begin{itemize}
+    \item LHS node id
+    \item RHS node id
+    \item LLVM statement
+    \item Type of the constraint, i.e. address of, or load, or store, or copy
+\end{itemize}
+
+\noindent
+Both LHS and RHS node consists of atleast the following information. 
+(Implementation details are discussed in Section 2.4).
+
+\begin{itemize}
+    \item the corresponding \texttt{llvm::Value}
+    \item what other nodes are being used (See section ??)
+    \item Type information, whether it is a struct or an array or a normal 
+pointer
+    \item A unique identifier
+\end{itemize}
+
+\subsection{Generation of constraints}
+For each statement type, respective method is used to extract constraint from
+that statement type. Constraints are generated for only following instructions.
+Other instructions are irrevelant since they do not use pointers or involve
+assignments that may affect pointers.
+
+\begin{itemize}
+    \item \texttt{alloca} instruction
+    \item \texttt{load} instruction
+    \item \texttt{store} instruction
+    \item \texttt{getelementptr} instruction
+    \item \texttt{phi} instruction
+    \item \texttt{bitcast} instruction
+    \item \texttt{select} instruction
+    \item \texttt{extractvalue} instruction
+    \item \texttt{insertvalue} instruction
+\end{itemize}
+
+\subsubsection{\texttt{alloca} instruction}
+Alloca instruction falls under the category of address-of instruction. Alloca 
+instruction allocates the memory in stack taking the type and number of 
+elements as arguments. It returns the pointer to that memory. 
+Example,
+
+\begin{lstlisting}
+    %a = alloca i32
+\end{lstlisting}
+\noindent
+Above instruction allocates the memory for i32 value and returns a pointer to 
+it. \%a is of type i32*. Constraint that is generated will be of the following 
+form,
+
+\begin{lstlisting}
+    { lhs-id } = & { rhs-id }
+\end{lstlisting}
+\noindent
+where \texttt{lhs-id} and \texttt{rhs-id} are the id's of the variables. 
+\texttt{lhs-id} represents the \texttt{\%a} and \texttt{rhs-id} represents the 
+node whose address is being assigned. In LLVM, this is a virtual node. So, 
+library creates a dummy node.
+Example,
+
+\begin{lstlisting}
+    1 = & 0
+\end{lstlisting}
+
+
+\subsubsection{\texttt{load} instruction}
+Only those load instructions whose return type is a pointer type are used for
+generating constraint. For e.g for the following load instruction
+
+\begin{lstlisting}
+    %a = load i32*, i32** %b
+\end{lstlisting}
+
+\noindent
+RHS node is \%b and LHS node is \%a. And the type of instruction is load.
+
+\subsubsection{\texttt{store} instruction}
+In case of store instruction, only those instructions are considered in which
+there is write to a pointer value. For e.g.
+
+\begin{lstlisting}
+    store i32* %a, i32** %b
+\end{lstlisting}
+\noindent
+and the following store instruction will not be considered for constraint
+
+\begin{lstlisting}
+    store i32 10, i32* %a
+\end{lstlisting}
+
+In the first example, RHS node is \%a and LHS node is \%b. And the type of 
+instruction is store.
+
+\subsubsection{\texttt{getelementptr} instruction}
+getelementptr instruction in LLVM is used for calculating the address 
+of a member elements of a aggregate type. So it takes the base address of
+the element of an aggregate type (e.g. struct or array) as the first argument.
+Indices are provided in the form of comma separated list following the base 
+address.
+e.g.
+
+\begin{lstlisting}
+    %a = getelementptr { i32*, i32 }, { i32*, i32 }* %b, i32 0, i32 0
+\end{lstlisting}
+
+getelementptr instruction generates special kind of constraint in which LHS is 
+same as \%a but RHS is a special node consisting of list of nodes being used as 
+arguments. So, LHS here is \%a, and RHS is a node consisting of \%b, `i32 0' 
+and 
+`i32 0' in its use list. Or we can say that RHS uses \%b, i32 0 and i32 0. And 
+the type of instruction is copy.
+
+\subsubsection{\texttt{phi} instruction}
+Phi instruction maintains the list of all the incoming values in its use list
+as its RHS. While LHS is same as in LLVM statement.
+E.g.
+\begin{lstlisting}
+    %a = phi i32* [ %0, %one ], [ %1, %two ], [ %3, %three ]
+\end{lstlisting}
+
+Phi instruction generates multiple constraints. Each of these constraint 
+consists of single possible assignment to the LHS. So the constraints generated 
+for above instruction will be, \%a = \%0, \%a = \%1, \%a = \%3. Each of these 
+constraints is a copy assignment.
+
+\subsubsection{\texttt{bitcast} instruction}
+bitcast instruction can convert a pointer of one type to another type. It is
+essentially a copy operation. LHS be the new pointer and RHS will be the old 
+pointer.
+
+E.g.
+\begin{lstlisting}
+    %a = bitcast i32* %b to i64*
+\end{lstlisting}
+
+\subsubsection{\texttt{select} instruction}
+select instruction is similar to br instruction. So, instead of jumping, it
+selects a value from a pair based on a condition variable. It also generates 
+multiple constraints where each constraint is a possible assignment. Each 
+constraint represents a copy assignment.
+
+E.g.
+\begin{lstlisting}
+    %c = select i1 %cond, i32* %a, i32* %b
+\end{lstlisting}
+
+Constraints generated for this instruction will be, \%c = \%a \& \%c = \%b
+
+\subsubsection{\texttt{extractvalue} instruction}
+ExtractValue instruction is used to extract the value of a member element from 
+an object of an aggregate type (struct or array). Whereas getelementptr is used 
+to calculate the address of a member element with respect to the base address, 
+the extractvalue instruction is used to directly access the value having a 
+member element. It takes the object directly as the first argument and next 
+arguments are the list of indices representing the index of the member 
+elements of an aggregate type.
+
+For e.g. if \%a is of type { i32*, i32 }, then 
+following instruction will extract the address being holded by first member 
+which is a pointer.
+
+\begin{lstlisting}
+ %first = extractvalue { i32*, i32 } %a, 0
+\end{lstlisting}
+
+Constraint generated is similar to the that of getelementptr instruction but 
+instead it is of type copy. RHS contains the \%a node and in its use list, it 
+contains the indices directly. So, unlike getelementptr, it doesn't store the 
+id's of the node being used because indices are constants here. But in 
+getelementptr instruction, indices can be variable too.
+
+\subsubsection{\texttt{insertvalue} instruction}
+Insertvalue instruction is used to insert a value into the member element of an 
+object of an aggregate type.
+The first operand of an ‘insertvalue‘ instruction is a value of struct or array 
+type. The second operand is a first-class value to insert. The following 
+operands are constant indices indicating the position at which to insert the 
+value in a similar manner as indices in a ‘extractvalue‘ instruction. The value 
+to insert must have the same type as the value identified by the indices.
+
+For e.g.,
+
+\begin{lstlisting}
+ %aggregate = insertvalue { i32*, i32 } %a, i32* %b, 0
+\end{lstlisting}
+
+The above code is similar to the following C code,
+
+\begin{lstlisting}
+ t = a;
+ t.first = b;
+ aggregate = t;
+\end{lstlisting}
+
+The constraint generated is of type copy as it copies the address stored in \%b 
+to a member of an object of aggregate type. RHS node of the constraint will be 
+same as that of insertvalue instruction.
+
+\section{Instructions not handled}
+Following instructions are not being handled by the library,
+
+\begin{itemize}
+    \item call
+    \item ret
+    \item inttoptr
+    \item ptrtoint
+\end{itemize}
+
+\chapter{Implementation Details}
+In this chapter, implementation level details of this are provided. Various 
+data structures used and APIs provided are explained in the next sections.
+
+\section{Data Structures}
+In this section, various classes and their properties used in the library are 
+explained.
+
+\subsection{PointsToNode}
+This is an important class which holds the information regarding single 
+pointer/variable. Though as the name suggests that this class represents 
+pointers only, but in some cases it can represent non-pointers as well.
+Every object of this class is assigned a unique id. This id is used in place 
+of using object directly. Thus helps in easier debugging.
+
+\subsection{Constraint}
+This class holds the information of single possible assignment in an 
+instruction. It holds the id's of two PointsToNode objects and the type of the 
+assignment which can be one of the four possible assignments as described 
+in Section 2.2.
+
+\subsection{ConstraintBuilder}
+This class provides APIs for generating constraints from LLVM IR. This class 
+also provides public methods to generates ID's for LLVM pointers.
+
+\subsection{PointerSymbolTable}
+This class manages all the tables and various mappings between library's 
+objects and LLVM's objects. This class is used by ConstraintBuilder in order to 
+generate ID's.
+
+\paragraph{}
+More details about each class' members and public methods are described in 
+documentation generated by doxygen from source directly.
+
+\section{ID Generation}
+
+
 
 \end{document}          
