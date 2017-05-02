@@ -14,6 +14,7 @@
 \usepackage{pst-grad}
 \usepackage{pst-coil}
 \usepackage{pst-text}
+\usepackage{minted}
 \usepackage{etex}
 \usepackage{array,longtable}
 \usepackage{courier}
@@ -134,12 +135,12 @@ Whereas, getelementptr instruction takes a base address and computes the address
 of element relative to base address using the provided arguments.
 Example,
 
-\begin{lstlisting}
+\begin{minted}{llvm}
 %a = alloca i32, i32 4
 %b = getelementptr i32, i32* %a, i32 1   ;select second element                 
  
                        
-\end{lstlisting}
+\end{minted}
 
 \noindent
 First statement is equivalent to, (here b is memory being allocated in stack)
@@ -176,9 +177,9 @@ load instruction in LLVM can be used to represent following C statement,
 Load instruction in LLVM takes an address and reads memory from that address,
 e.g.,
 
-\begin{lstlisting}
+\begin{minted}{llvm}
     %a = load i32*, i32** %b
-\end{lstlisting}
+\end{minted}
 
 \noindent
 Here \texttt{load} instruction will read the memory from the location pointed 
@@ -203,9 +204,9 @@ store instruction in LLVM is equivalent to following C statement,
 Store instruction in LLVM writes to the memory at address provided as second
 argument. First argument is the value which has to be written.
 Example,
-\begin{lstlisting}
+\begin{minted}{llvm}
     store i32* %b, i32** %a
-\end{lstlisting}
+\end{minted}
 
 \noindent
 Constraint-gen library ignores those store statements which do not write address
