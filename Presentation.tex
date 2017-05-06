@@ -1,0 +1,97 @@
+\documentclass{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[english]{babel}
+
+\title{Constraint Generation Library for LLVM}
+\author[Pushpinder Singh]{Pushpinder Singh\\~}
+\institute[IIT Bombay]
+{
+\textit{Under the guidance of}\\
+\textbf{Prof. Uday Khedker}\\
+Computer Science Department,\\
+IIT Bombay
+}
+
+\date{2017}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}
+\frametitle{Contents:}
+\tableofcontents
+\end{frame}
+
+\section{Introduction}
+
+% about LLVM
+\begin{frame}
+\frametitle{A bit about LLVM}
+
+LLVM stands for Low-Level Virtual Machine.
+\begin{itemize}
+	% LLVM started as a research project in University of Illinois by Chris Lattner
+	% He designed LLVM as a framework for making program analysis easier. Slowly
+	% the project developed into full compiler framework. Now this project has
+	% full C/C++ compiler known as clang which is used as default compiler in
+	% Apple MacOS and iOS and in many unix operating systems.
+	\item<1-> Framework for building compilers
+	% AS previously told the framework is designed for making program analysis easier
+	\item<2-> Framework for Program Analysis
+	% LLVM is designed very well. This project is divided into many independent sub projects.
+	% Thus integrating LLVM into another project is much easier.
+	\item<3-> Provides reusable components
+	% LLVM is designed for making program analysis easier. It provides a huge set
+	% of compiler optimizations. These optimizations can be compile-time or link-time
+	% or run-time
+	\item<4-> Designed for compile-time, link-time, run-time optimizations
+	% LLVM is designed as language independent framework. It provides a well designed
+	% intermediate representation that satisfies the requirement of most of the programming
+	% languages. We will discuss about IR in next slide
+	\item<5-> Language independent design
+\end{itemize}
+\end{frame}
+
+% about llvm IR
+\begin{frame}
+\frametitle{A bit about LLVM}
+% in this presentation we will discuss about LLVM IR.
+Overview of LLVM IR,
+\begin{itemize}
+	% LLVM IR is Static Single Assignment based representation. A variable
+	% is assigned only once and can not be changed 
+	\item<1-> SSA based representation
+	% IR is completely type safe.
+	\item<2-> Type safe
+	% The LLVM IR is near assembly representation but is easier than assembly.
+	% It has infinite set of virtual registers. Every variable is a virtual register.
+	\item<3-> Low-level operations
+	% LLVM IR is capable of representing all the high-level languages like C, C++
+	% objective-C, swift, javascript, java etc
+	\item<4-> Capable of representing all the high-level languages
+\end{itemize}
+
+\end{frame}
+
+\section{Points-to Analysis}
+
+\begin{frame}
+\frametitle{Points-to Analysis}
+
+Points to analysis is an analysis which involves determining the association between
+pointer variables and the locations pointed to by them.
+
+\end{frame}
+
+
+
+\section{Using the library}
+\begin{frame}
+\frametitle{Using the library}
+\end{frame}
+
+\end{document}
