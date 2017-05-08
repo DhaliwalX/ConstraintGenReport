@@ -4,6 +4,40 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage[english]{babel}
+\usepackage{pstricks}
+\usepackage{etex}
+\usepackage{cancel}
+\usepackage{array}
+\usepackage{pst-node}
+\usepackage{pst-grad}
+\usepackage{pst-text}
+\usepackage{pst-coil}
+\usepackage{pst-rel-points}
+\usepackage{colortbl}
+\usepackage{comment}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{stmaryrd}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{xspace}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage[normalem]{ulem}
+\usepackage{array,longtable}
+
+\usepackage{verbatim}
+\usepackage{tikz}
+\usepackage{fmtcount}
+\usepackage{scalefnt}
+\usepackage{wasysym}
+\usepackage{stmaryrd}
+\usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps}
+\usepackage{pgfplotstable} 
+\usepackage{pgfplots}
+\usepackage{isomath}
+\usetikzlibrary{patterns}
 
 \title{Constraint Generation Library for LLVM}
 \author[Pushpinder Singh]{Pushpinder Singh\\~}
@@ -124,6 +158,79 @@ Constraint has the following information:
 	\item<4-> and type of assignments
 \end{itemize}
 \end{frame}
+
+\begin{frame}
+\frametitle{Types of constraints}
+
+\begin{itemize}
+	\item<1-> Address of. For e.g a = \&b
+	\item<2-> Copy. For e.g. a = b
+	\item<3-> Load. For e.g. a = *b
+	\item<4-> Store. For e.g. *a = b
+\end{itemize}
+
+\end{frame}
+
+\frame{
+\frametitle{Instructions in LLVM IR for Points-to Analysis}
+\psset{unit=1mm}
+\begin{pspicture}(0,0)(120,80)
+ \onslide<1->
+ {
+ \putnode{n1}{origin}{20}{75}{%
+         {\blue Instructions in LLVM IR}}
+  }
+  \onslide<2->
+{
+ \putnode{n2}{n1}{0}{-8}{%
+         {alloca}}
+ \putnode{n3}{n2}{0}{-8}{%
+         {getelementptr}}
+ \putnode{n4}{n3}{0}{-8}{%
+         {load}}
+ \putnode{n5}{n4}{0}{-8}{%
+         {store}}
+ \putnode{n6}{n5}{0}{-8}{%
+         {phi}}
+ \putnode{n7}{n6}{0}{-8}{%
+         {select}}
+ \putnode{n8}{n7}{0}{-8}{%
+         {extractvalue}}
+ \putnode{n9}{n8}{0}{-8}{%
+         {insertvalue}}
+}   
+
+\onslide<3->
+ {
+ \putnode{n10}{origin}{80}{75}{%
+         {\blue Primitive Statements for Points-to Analysis}}
+  }
+  \onslide<4->
+{
+ \putnode{n11}{n10}{0}{-15}{%
+         {\red Address of: } \textit{x = \&y}}
+ \putnode{n12}{n11}{0}{-15}{%
+         {\red Load: }\textit{x = *y}}
+ \putnode{n13}{n12}{0}{-15}{%
+         {\red Store: }\textit{*x = y}}
+ \putnode{n14}{n13}{0}{-15}{%
+         {\red Copy: }\textit{x = y}}
+} 
+\onslide<5->
+{
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n2}{n11}
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n3}{n11}
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n4}{n12}
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n5}{n13}
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n6}{n14}
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n7}{n14}
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n8}{n14}
+\ncline[linestyle=dashed,dash=.4 .4,nodesep=1]{->}{n9}{n14}
+
+}
+\end{pspicture}
+}
+
 
 \begin{frame}
 \frametitle{ConstraintGen library}

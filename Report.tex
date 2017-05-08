@@ -1,4 +1,4 @@
-\documentclass[a4paper,11pt]{report}
+\documentclass[a4paper,12pt]{report}
 \usepackage{graphics}
 \usepackage{graphicx}
 \usepackage{textcomp}
@@ -18,12 +18,9 @@
 \usepackage{etex}
 \usepackage{url}
 \usepackage{float}
-\usepackage[table]{xcolor}
-\usepackage{courier}
-
 \usepackage[letterpaper, margin=1in]{geometry}
 
-\lstset{basicstyle=\tiny\ttfamily,breaklines=true}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
 \lstset{framextopmargin=50pt}
 %%%
 % \usepackage{geometry}
@@ -34,24 +31,31 @@
 % top=20mm,
 % }
 %%% 
+\begin{document}
  
 % Title Page
-\title{
-    \huge ConstraintGen Library for LLVM\\
-    \vspace{15pt}
-    \normalfont \normalsize \textit{Under the guidance of}\\
-    \vspace{3pt}
-    \normalsize Prof. Uday Khedker\\
-    \normalsize Computer Science Department\\
-    \normalsize IIT Bombay
-}
+\begin{titlepage}
+\begin{center}
+    \vspace*{\fill}
+    \huge{Constraint Generation Library for LLVM}\\
+    \vspace{2cm}
+    \large{2017}\\
 
-\author{
-    Pushpinder Singh
-}
 
-\begin{document}
-\maketitle
+    \vspace{2cm}
+    \textbf{Pushpinder Singh}\\
+    (PEC University of Technology)\\
+
+    ~\\
+    Under the guidance of\\
+    \textbf{Prof. Uday Khedker}\\
+    Computer Science Department,\\
+    IIT Bombay
+
+    \vspace*{\fill}
+\end{center}
+\end{titlepage}
+
 
 \begin{abstract}
 
@@ -69,7 +73,7 @@ LLVM IR.
 
 A number of points-to analysis have been developed like Andersen's Analysis
 \cite{Andersons}, Steensgaard's Pointer Analysis \cite{Steensgaard}, or Vini's
-Generalizing the Liveness Based Points-to Analysis \cite{Vini:2014}. All these
+Generalizing the Liveness Based Points-to Analysis \cite{Vini:2014}, or GPG Analysis \cite{Pritams}. All these
 analysis have one thing in common that they depend upon some common properties of
 the pointers  present in the source code of a program. These properties include
 information like the assignments to the pointers, type information, or level
@@ -152,7 +156,7 @@ Whereas, getelementptr instruction takes a base address and computes the address
 of element relative to base address using the provided arguments.
 Example,
 
-\begin{minted}{llvm}
+\begin{minted}[fontsize=\footnotesize]{llvm}
 %a = alloca i32, i32 4
 %x = getelementptr i32, i32* %a, i32 1   ;select second element                 
  
@@ -193,7 +197,7 @@ load instruction in LLVM can be used to represent following C statement,
 Load instruction in LLVM takes an address and reads memory from that address,
 e.g.,
 
-\begin{minted}{llvm}
+\begin{minted}[fontsize=\footnotesize]{llvm}
     %a = load i32*, i32** %b
 \end{minted}
 
@@ -220,7 +224,7 @@ store instruction in LLVM is equivalent to following C statement,
 Store instruction in LLVM writes to the memory at address provided as second
 argument. First argument is the value which has to be written.
 Example,
-\begin{minted}{llvm}
+\begin{minted}[fontsize=\footnotesize]{llvm}
     store i32* %b, i32** %a
 \end{minted}
 
@@ -485,7 +489,7 @@ library.
 
 \paragraph{Example 1}
 
-\begin{minted}{llvm}
+\begin{minted}[fontsize=\footnotesize]{llvm}
 define void @f() {
     %a = alloca i32
     ret void
@@ -498,7 +502,7 @@ Corresponding constraints,
 \end{lstlisting}
 
 \paragraph{Example 2}
-\begin{minted}{llvm}
+\begin{minted}[fontsize=\footnotesize]{llvm}
 define void @f() {
     %a = alloca i32
     %b = alloca i32*
@@ -515,7 +519,7 @@ Corresponding constraints,
 \end{lstlisting}
 
 \paragraph{Example 3}
-\begin{minted}{llvm}
+\begin{minted}[fontsize=\footnotesize]{llvm}
 define void @f() {
     %b = alloca i32*
     %1 = load i32*, i32** %b
@@ -531,7 +535,7 @@ Corresponding constraints,
 
 \paragraph{Example 4}
 
-\begin{minted}{llvm}
+\begin{minted}[fontsize=\footnotesize]{llvm}
 define void @foo () {
     %a = alloca { i32*, i32 }
     %b = alloca i32
@@ -660,7 +664,7 @@ and generating ID's for LLVM IR. These methods are described below.
 
 \subsection{\texttt{getConstraint}}
 \paragraph{Prototype}
-\begin{minted}{C++}
+\begin{minted}[fontsize=\footnotesize]{C++}
 std::vector<Constraint>
     getConstraint(llvm::Instruction *i);
 \end{minted}
@@ -678,7 +682,7 @@ this function for assigning ID's to the LLVM variables which were missed in the 
 instruction by the library.
 
 \paragraph{Prototype}
-\begin{minted}{C++}
+\begin{minted}[fontsize=\footnotesize]{C++}
 NodeIndex generateId(llvm::Value *val);
 \end{minted}
 
@@ -688,7 +692,7 @@ object and returns the ID of that object.
 
 \subsection{\texttt{makeConstraint}}
 \paragraph{Prototype}
-\begin{minted}{C++}
+\begin{minted}[fontsize=\footnotesize]{C++}
 Constraint makeConstraint(NodeIndex lhs,
                           NodeIndex rhs,
                           ConstraintType type);
