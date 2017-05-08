@@ -16,10 +16,14 @@
 \usepackage{pst-text}
 \usepackage{minted}
 \usepackage{etex}
-\usepackage{array,longtable}
+\usepackage{url}
+\usepackage{float}
+\usepackage[table]{xcolor}
 \usepackage{courier}
 
-\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\usepackage[letterpaper, margin=1in]{geometry}
+
+\lstset{basicstyle=\tiny\ttfamily,breaklines=true}
 \lstset{framextopmargin=50pt}
 %%%
 % \usepackage{geometry}
@@ -32,18 +36,30 @@
 %%% 
  
 % Title Page
-\title{ConstraintGen Library for LLVM}
-\author{Pushpinder Singh}
+\title{
+    \huge ConstraintGen Library for LLVM\\
+    \vspace{15pt}
+    \normalfont \normalsize \textit{Under the guidance of}\\
+    \vspace{3pt}
+    \normalsize Prof. Uday Khedker\\
+    \normalsize Computer Science Department\\
+    \normalsize IIT Bombay
+}
+
+\author{
+    Pushpinder Singh
+}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
 
-This document describes constraintgen library for generating points-to 
-constraints for LLVM IR. Most of the points-to analysis depends on common 
-properties of pointers present in the source code. These properties for each 
-pointer in the source code can be gathered by using this library for LLVM IR.
+This document describes constraintgen library which helps in generating \textit{Points-to}
+constraints for LLVM IR. Most of the points-to analysis depends on common
+properties of pointers present in the source code. These properties for
+each pointer in the source code can be gathered by using this library for
+LLVM IR.
 
 \end{abstract}
 
@@ -51,13 +67,15 @@ pointer in the source code can be gathered by using this library for LLVM IR.
 
 \chapter{Introduction}
 
-A number of points-to analysis have been developed. All these analysis have one 
-thing in common that they depend upon some common properties of the pointers 
-present in the source code of a program. These properties include information 
-like the assignments to the pointers, type information, or level of indirection.
-This information can represented in the form of set of constraints. These 
-constraints correspond to the assignments in the source code. Only those 
-assignments matter in which there is a write/read to pointer variable.
+A number of points-to analysis have been developed like Andersen's Analysis
+\cite{Andersons}, Steensgaard's Pointer Analysis \cite{Steensgaard}, or Vini's
+Generalizing the Liveness Based Points-to Analysis \cite{Vini:2014}. All these
+analysis have one thing in common that they depend upon some common properties of
+the pointers  present in the source code of a program. These properties include
+information like the assignments to the pointers, type information, or level
+of indirection. This information can represented in the form of set of constraints.
+These constraints correspond to the assignments in the source code. Only those 
+assignments matter in which there is write to a pointer location.
 
 This library tries to extract this type of information in form of constraints 
 from LLVM IR. It provides set of well defined APIs for generating constraints 
@@ -67,13 +85,13 @@ from LLVM IR.
 Most of the points-to analyses depend only on the pointer assignments in
 the source code. Other assignments for such analyses doesn't matter because
 they do not affect pointers. For implementing these analyses, the
-first step would be to extract these assignments from the IR which is quite a 
-waste of time if someone has to write a number of such analysis. So instead of
+first step would be to extract these assignments and their constraints from
+the IR which is quite a waste of time if someone has to write a number of such analysis. So instead of
 wasting time on writing code for extracting these statements, this library 
 provides an API for doing so easily. The implementer now only has to focus on 
 implementing the analysis.
 
-This library has been designed by keeping in mind the forward and backward
+This library has been designed keeping in mind the forward and backward
 analysis and top-down and bottom-up analyses. So it generates constraint
 without depending on the flow or context information.
 
@@ -84,12 +102,11 @@ LLVM Intermediate Code. In order to generate the constraints, it classifies the
 various LLVM IR instructions into four basic pointer assignments as described 
 in Section 2.2. This library considers only those LLVM IR statements which are
 relevant for \textit{Points-to Analysis} i.e. only those instructions in which 
-there is 
-read/write to a pointer. The library considers each pointer statement in the 
+there is write to a pointer location. The library considers each pointer statement in the 
 program independently. This each constraint is independent and is not 
 influenced by control flow or call context. So, if someone want to do a 
 forward flow analysis or backward flow analysis, or Context sensitive or 
-insensitive, this library will be helpful for him.
+insensitive, this library will be helpful.
 
 
 \section{Design}
@@ -137,7 +154,7 @@ Example,
 
 \begin{minted}{llvm}
 %a = alloca i32, i32 4
-%b = getelementptr i32, i32* %a, i32 1   ;select second element                 
+%x = getelementptr i32, i32* %a, i32 1   ;select second element                 
  
                        
 \end{minted}
@@ -150,10 +167,9 @@ First statement is equivalent to, (here b is memory being allocated in stack)
 \end{lstlisting}
 
 \noindent
-And the second statement is equivalent to, (b should not be confused with 
-previous example)
+And the second statement is equivalent to,
 \begin{lstlisting}
-    b = &a[1]
+    x = &a[1]
 \end{lstlisting}
 
 \noindent
@@ -278,7 +294,7 @@ pointer
 For each statement type, respective method is used to extract constraint from
 that statement type. Constraints are generated for only following instructions.
 Other instructions are irrevelant since they do not use pointers or involve
-assignments that may affect pointers.
+assignments that affect pointer locations.
 
 \begin{itemize}
     \item \texttt{alloca} instruction
@@ -364,8 +380,7 @@ e.g.
 getelementptr instruction generates special kind of constraint in which LHS is 
 same as \%a but RHS is a special node consisting of list of nodes being used as 
 arguments. So, LHS here is \%a, and RHS is a node consisting of \%b, `i32 0' 
-and 
-`i32 0' in its use list. Or we can say that RHS uses \%b, i32 0 and i32 0. And 
+and `i32 0' in its use list. Or we can say that RHS uses \%b, i32 0 and i32 0. And 
 the type of instruction is copy.
 
 \subsubsection{\texttt{phi} instruction}
@@ -464,9 +479,82 @@ Following instructions are not being handled by the library,
     \item ptrtoint
 \end{itemize}
 
+\section{Examples}
+This sections provides some small examples of constraints generated using the
+library.
+
+\paragraph{Example 1}
+
+\begin{minted}{llvm}
+define void @f() {
+    %a = alloca i32
+    ret void
+}
+\end{minted}
+
+Corresponding constraints,
+\begin{lstlisting}
+1 = & 0
+\end{lstlisting}
+
+\paragraph{Example 2}
+\begin{minted}{llvm}
+define void @f() {
+    %a = alloca i32
+    %b = alloca i32*
+    store i32* %a, i32** %b
+    ret void
+}
+\end{minted}
+
+Corresponding constraints,
+\begin{lstlisting}
+1 = & 0
+3 = & 2
+* 3 = 1
+\end{lstlisting}
+
+\paragraph{Example 3}
+\begin{minted}{llvm}
+define void @f() {
+    %b = alloca i32*
+    %1 = load i32*, i32** %b
+    ret void
+}
+\end{minted}
+
+Corresponding constraints,
+\begin{lstlisting}
+1 = & 0
+2 = * 1
+\end{lstlisting}
+
+\paragraph{Example 4}
+
+\begin{minted}{llvm}
+define void @foo () {
+    %a = alloca { i32*, i32 }
+    %b = alloca i32
+    %1 = getelementptr { i32*, i32 }, {i32*, i32}* %a, i32 0, i32 0
+    store i32* %b, i32** %1
+    ret void
+}
+\end{minted}
+
+Corresponding constraints,
+\begin{lstlisting}
+1 = & 0
+3 = & 2
+6 = & 4 uses: { 1, 5, 5 }
+* 6 = 3
+\end{lstlisting}
+
 \chapter{Implementation Details}
 In this chapter, implementation level details of this are provided. Various 
 data structures used and APIs provided are explained in the next sections.
+
+The whole project is maintained using git. Project repository is hosted using
+GitHub \cite{GitHub}.
 
 \section{Data Structures}
 In this section, various classes and their properties used in the library are 
@@ -477,7 +565,31 @@ This is an important class which holds the information regarding single
 pointer/variable. Though as the name suggests that this class represents 
 pointers only, but in some cases it can represent non-pointers as well.
 Every object of this class is assigned a unique id. This id is used in place 
-of using object directly. Thus helps in easier debugging.
+of using object directly. Thus helps in easier debugging. Class details are provided in Table \ref{points-to-node}.
+
+\begin{table}[]
+\centering
+\caption{PointsToNode}
+\label{points-to-node}
+\begin{tabular}{|l|l|l|}
+\hline
+getValue     & llvm::Value*  & returns the corresponding llvm::Value object.                               \\ \hline
+getType      & llvm::Type*   & Returns the pointer to llvm::Type                                           \\ \hline
+hasStructTy  & bool          & Returns true if this node has struct type.                                  \\ \hline
+hasArrayTy   & bool          & Returns true if this node has array type.                                   \\ \hline
+hasPointerTy & bool          & Returns true if this node has pointer type                                  \\ \hline
+getId        & NodeIndex     & Returns the ID of this node                                                 \\ \hline
+use\_begin   & use\_iterator & Returns iterator to beginning of use list                                   \\ \hline
+use\_end     & use\_iterator & Returns iterator to the one past last element of the use\_list              \\ \hline
+use\_size    & size\_t       & Returns the size of the use list.                                           \\ \hline
+use\_empty   & bool          & Returns true if use list is empty                                           \\ \hline
+getUse       & NodeIndex     & Returns nth use.                                                            \\ \hline
+isDummy      & bool          & Returns true if this node is a dummy node.                                  \\ \hline
+dump         & void          & Dumps this node to the provided llvm::raw\_ostream object.                  \\ \hline
+\end{tabular}
+\end{table}
+
+
 
 \subsection{\texttt{NodeIndex}}
 This type is used for ID's. Every \texttt{PointsToNode} object is assigned
@@ -487,22 +599,62 @@ a unique ID of type \texttt{NodeIndex} which is equivalent to \texttt{unsigned i
 This class holds the information of single possible assignment in an 
 instruction. It holds the id's of two PointsToNode objects and the type of the 
 assignment which can be one of the four possible assignments as described 
-in Section 2.2.
+in Section 2.2. Details about member functions are provided in Table \ref{constraint}.
+
+\begin{table}[]
+\centering
+\caption{Constraint}
+\label{constraint}
+\begin{tabular}{|l|l|l|}
+\hline
+getLHSId                    & NodeIndex      & returns the ID of the LHS node            \\ \hline
+getRHSId                    & NodeIndex      & returns the ID of the RHS node            \\ \hline
+getType                     & ConstraintType & returns the type of constraint            \\ \hline
+dump                        & void           & dumps the constraint to the stream object \\ \hline
+\end{tabular}
+\end{table}
 
 \subsection{\texttt{ConstraintBuilder}}
 This class provides APIs for generating constraints from LLVM IR. This class 
-also provides public methods to generates ID's for LLVM pointers.
+also provides public methods to generates ID's for LLVM pointers. Details about member functions of this class are provided in Table \ref{constraint-builder}.
+
+\begin{table}[]
+\centering
+\caption{ConstraintBuilder}
+\label{constraint-builder}
+\begin{tabular}{|l|l|p{5cm}|}
+\hline
+getConstraint  & std::vector\textless Constraint\textgreater & takes an llvm::Instruction pointer and returns a list of constraints. \\ \hline
+generateId     & NodeIndex                                  & takes an llvm::Value pointer and returns the ID of that value.        \\ \hline
+makeConstraint & Constraint                                 & creates a Constraint object.                                          \\ \hline
+\end{tabular}
+\end{table}
 
 \subsection{\texttt{PointerSymbolTable}}
 This class manages all the tables and various mappings between library's 
 objects and LLVM's objects. This class is used by ConstraintBuilder in order to 
-generate ID's.
+generate ID's. Member details of this class are in Table \ref{pointer-symbol-table}.
+
+\begin{table}[]
+\centering
+\caption{PointerSymbolTable}
+\label{pointer-symbol-table}
+\begin{tabular}{|l|l|p{5cm}|}
+\hline
+getValue & PointsToNode* & returns a PointsToNode object corresponding to an ID. \\ \hline
+createPointerNode & NodeIndex & creates a new PointsToNode object and stores it in a map and returns the ID of that object. \\ \hline
+size & size\_t & returns the size of the table. \\ \hline
+dump & void & prints the table to the llvm::raw\_ostream object. \\ \hline
+createDummyNode & NodeIndex & creates a dummy PointsToNode object in the map. These objects don't have any llvm::Value. \\ \hline
+
+\end{tabular}
+\end{table}
 
 \paragraph{}
 More details about each class' members and public methods are described in 
 documentation generated by doxygen from source directly.
 
-\section{Public API's provided}
+\section{Public APIs}
 \texttt{ConstraintBuilder} class provides interface for generating constraints
 and generating ID's for LLVM IR. These methods are described below.
 
@@ -554,4 +706,12 @@ one of the following:
     \item \texttt{kCopy}
 \end{itemize}
 
+\chapter{Conclusion}
+ConstraintGen library helps in implementing the \textit{Points-to Analysis} by
+providing base constraints for LLVM IR.
+
+
+\bibliography{References}
+\bibliographystyle{ieeetr}
 \end{document}
+
