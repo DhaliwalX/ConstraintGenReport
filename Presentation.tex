@@ -81,13 +81,65 @@ Overview of LLVM IR,
 
 \begin{frame}
 \frametitle{Points-to Analysis}
-
-Points to analysis is an analysis which involves determining the association between
+- Points to analysis is an analysis which involves determining the association between
 pointer variables and the locations pointed to by them.
+
+\vspace{15pt}
+
+\pause
+- Points-to Analyses works on pointer assignments in a source program.
+
+\pause
+Examples,
+\begin{itemize}
+	\item<1-> \texttt{a = \&b}
+	\item<2-> \texttt{a = *b}
+	\item<3-> \texttt{a[10] = f.x[0].g}
+\end{itemize}
+
+\vspace{15pt}
+
+\pause
+\alert{- We need to extract those assignments.}
 
 \end{frame}
 
+\begin{frame}
+\frametitle{Points-to Analysis}
+Those pointer assignments are termed as Constraints.
+\end{frame}
 
+\begin{frame}
+\frametitle{Constraints}
+\vspace{15pt}
+\huge What are constraints?
+
+\vspace{15pt}
+\normalsize
+Constraint is single basic pointer assignment in a source program.
+Constraint has the following information:
+\begin{itemize}
+	\item<2-> LHS pointer
+	\item<3-> RHS pointer
+	\item<4-> and type of assignments
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{ConstraintGen library}
+% so when a developer starts writing a points-to analysis, his first
+% step is to extract those assignments and put them in a suitable
+% data structure. This involves handling a lot of cases.
+% This library tries to handle all the constraint extraction part.
+% Hence it is easier for the developer to focus on the main analysis.
+ConstraintGen library extracts those assignments from the LLVM IR and puts
+them in a well designed data structure.
+
+\vspace{15pt}
+\pause
+It handles all types of assignments present in the LLVM IR.
+
+\end{frame}
 
 \section{Using the library}
 \begin{frame}
