@@ -59,7 +59,7 @@
 
 \begin{abstract}
 
-This document describes constraintgen library which helps in generating \textit{Points-to}
+This document describes constraint-gen library which helps in generating \textit{Points-to}
 constraints for LLVM IR. Most of the points-to analysis depends on common
 properties of pointers present in the source code. These properties for
 each pointer in the source code can be gathered by using this library for
@@ -99,9 +99,9 @@ This library has been designed keeping in mind the forward and backward
 analysis and top-down and bottom-up analyses. So it generates constraint
 without depending on the flow or context information.
 
-\chapter{Constraint Gen library}
+\chapter{constraint-gen library}
 
-Constraint gen library is designed to generate Points-to constraints from the
+constraint-gen library is designed to generate Points-to constraints from the
 LLVM Intermediate Code. In order to generate the constraints, it classifies the
 various LLVM IR instructions into four basic pointer assignments as described 
 in Section 2.2. This library considers only those LLVM IR statements which are
@@ -229,7 +229,7 @@ Example,
 \end{minted}
 
 \noindent
-Constraint-gen library ignores those store statements which do not write address
+constraint-gen library ignores those store statements which do not write address
 to memory or which involves writing non pointer values to the memory. So the
 following store statements in the IR will be ignored,
 
@@ -710,10 +710,58 @@ one of the following:
     \item \texttt{kCopy}
 \end{itemize}
 
-\chapter{Conclusion}
-ConstraintGen library helps in implementing the \textit{Points-to Analysis} by
-providing base constraints for LLVM IR.
+\chapter{Using this library}
+This section discusses about how to use this library for implementing an analysis.
+The library can be integrated into project by two ways,
 
+\begin{itemize}
+    \item Developing Analysis inside the source tree of constraint-gen library.
+    \item Integrating constraint-gen library inside the source tree of the analysis.
+\end{itemize}
+
+\section{Developing Analysis inside the source tree of constraint-gen library}
+If analysis is small, then it can be simply written inside the source tree
+of the constraint-gen library. The source files will remain inside \texttt{tests/}
+directory. Then add the following line to the \texttt{tests/CMakeLists.txt}
+
+\begin{minted}{cmake}
+add_points_to_project(NameOfYourAnalysis Analysis.cc)
+\end{minted}
+
+Then compile the library. The analysis will be compiled along side library.
+And \texttt{libNameOfYourAnalysis.so} will be built. Now this pass can be used
+from opt as,
+
+\begin{minted}{shell}
+opt -load build/lib/libNameOfYourAnalysis.so -your-analysis-option test.ll
+\end{minted}
+
+Examples have been provided in the \texttt{tests} directory.
+
+\section{Integrating constraint-gen library inside the source tree of the analysis}
+In case analysis is large, then the constraint-gen library can be included directly inside
+the source tree of the analysis. But this involves writing all the CMakeLists.txt files.
+An example of this way can be seen in the implementation of the GPG analysis by Binapani Beria \cite{Bina}.
+Best way is to use git and keep the library as a separate submodule. In this way,
+updates to the library would be easier to integrate.
+
+\chapter{Conclusion}
+LLVM is great tool for program analysis. 
+constraint-gen library helps in implementing the \textit{Points-to Analysis} by
+providing base constraints for LLVM IR. The library can reduce the time and effort
+of the developer. This library covers the base requirements of most of the
+Points-to Analyses.
+
+This library has been used in implementing a part of Pritam's GPG Analysis
+\cite{Pritams}. Library has been well tested using LLVM Testing Suite.
+Almost all the test cases have been covered. Its data structures are unit
+tested using Google Test Framework \cite{Gtest}.
+
+There are still few cases, where the constraints will be missed.
+In case of \texttt{ptrtoint} and \texttt{inttoptr} instruction, constraints
+will be missed. For example, if a pointer is casted to an integer and then casted
+back to pointer then there will be information missing about the operations on that
+integer.
 
 \bibliography{References}
 \bibliographystyle{ieeetr}

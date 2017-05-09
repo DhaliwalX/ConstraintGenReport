@@ -16,10 +16,10 @@ Presentationps: Presentationdvi
 	dvips Presentation.dvi
 
 Presentationdvi: Presentation.tex
-	latex Presentation.tex
+	latex -shell-escape Presentation.tex
 
 .PHONY:
 	
 clean:
-	rm -rf *.log  *.ps *.dvi *.bbl *.aux *.blg *.toc *.ilg *.ind *.backup *.pdf *.snm *.nav *.out _minted-Report
+	rm -rf *.log  *.ps *.dvi *.bbl *.aux *.blg *.toc *.ilg *.ind *.backup *.pdf *.snm *.nav *.out _minted-* *.pyg *.vrb
 

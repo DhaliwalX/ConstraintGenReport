@@ -12,4 +12,6 @@
 *.snm
 *.nav
 *.out
-_minted-Report
+_minted-*
+*.pyg
+*.vrb

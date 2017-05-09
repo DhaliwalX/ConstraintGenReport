@@ -21,6 +21,7 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{xspace}
+\usepackage{listings}
 \usepackage{multirow}
 \usepackage{multicol}
 \usepackage{graphicx}
@@ -34,7 +35,7 @@
 \usepackage{wasysym}
 \usepackage{stmaryrd}
 \usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps}
-\usepackage{pgfplotstable} 
+\usepackage{pgfplotstable}
 \usepackage{pgfplots}
 \usepackage{isomath}
 \usetikzlibrary{patterns}
@@ -66,27 +67,26 @@ IIT Bombay
 \begin{frame}
 \frametitle{A bit about LLVM}
 
-LLVM stands for Low-Level Virtual Machine.
 \begin{itemize}
-	% LLVM started as a research project in University of Illinois by Chris Lattner
-	% He designed LLVM as a framework for making program analysis easier. Slowly
-	% the project developed into full compiler framework. Now this project has
-	% full C/C++ compiler known as clang which is used as default compiler in
-	% Apple MacOS and iOS and in many unix operating systems.
-	\item<1-> Framework for building compilers
-	% AS previously told the framework is designed for making program analysis easier
-	\item<2-> Framework for Program Analysis
-	% LLVM is designed very well. This project is divided into many independent sub projects.
-	% Thus integrating LLVM into another project is much easier.
-	\item<3-> Provides reusable components
-	% LLVM is designed for making program analysis easier. It provides a huge set
-	% of compiler optimizations. These optimizations can be compile-time or link-time
-	% or run-time
-	\item<4-> Designed for compile-time, link-time, run-time optimizations
-	% LLVM is designed as language independent framework. It provides a well designed
-	% intermediate representation that satisfies the requirement of most of the programming
-	% languages. We will discuss about IR in next slide
-	\item<5-> Language independent design
+    % LLVM started as a research project in University of Illinois by Chris Lattner
+    % He designed LLVM as a framework for making program analysis easier. Slowly
+    % the project developed into full compiler framework. Now this project has
+    % full C/C++ compiler known as clang which is used as default compiler in
+    % Apple MacOS and iOS and in many unix operating systems.
+    \item<1-> Framework for building compilers
+    % AS previously told the framework is designed for making program analysis easier
+    \item<2-> Framework for Program Analysis
+    % LLVM is designed very well. This project is divided into many independent sub projects.
+    % Thus integrating LLVM into another project is much easier.
+    \item<3-> Provides reusable components
+    % LLVM is designed for making program analysis easier. It provides a huge set
+    % of compiler optimizations. These optimizations can be compile-time or link-time
+    % or run-time
+    \item<4-> Designed for compile-time, link-time, run-time optimizations
+    % LLVM is designed as language independent framework. It provides a well designed
+    % intermediate representation that satisfies the requirement of most of the programming
+    % languages. We will discuss about IR in next slide
+    \item<5-> Language independent design
 \end{itemize}
 \end{frame}
 
@@ -96,17 +96,17 @@ LLVM stands for Low-Level Virtual Machine.
 % in this presentation we will discuss about LLVM IR.
 Overview of LLVM IR,
 \begin{itemize}
-	% LLVM IR is Static Single Assignment based representation. A variable
-	% is assigned only once and can not be changed 
-	\item<1-> SSA based representation
-	% IR is completely type safe.
-	\item<2-> Type safe
-	% The LLVM IR is near assembly representation but is easier than assembly.
-	% It has infinite set of virtual registers. Every variable is a virtual register.
-	\item<3-> Low-level operations
-	% LLVM IR is capable of representing all the high-level languages like C, C++
-	% objective-C, swift, javascript, java etc
-	\item<4-> Capable of representing all the high-level languages
+    % LLVM IR is Static Single Assignment based representation. A variable
+    % is assigned only once and can not be changed 
+    \item<1-> SSA based representation
+    % IR is completely type safe.
+    \item<2-> Type safe
+    % The LLVM IR is near assembly representation but is easier than assembly.
+    % It has infinite set of virtual registers. Every variable is a virtual register.
+    \item<3-> Low-level operations
+    % LLVM IR is capable of representing all the high-level languages like C, C++
+    % objective-C, swift, javascript, java etc
+    \item<4-> Capable of representing all the high-level languages
 \end{itemize}
 
 \end{frame}
@@ -126,9 +126,9 @@ pointer variables and the locations pointed to by them.
 \pause
 Examples,
 \begin{itemize}
-	\item<1-> \texttt{a = \&b}
-	\item<2-> \texttt{a = *b}
-	\item<3-> \texttt{a[10] = f.x[0].g}
+    \item<1-> \texttt{a = \&b}
+    \item<2-> \texttt{a = *b}
+    \item<3-> \texttt{a[10] = f.x[0].g}
 \end{itemize}
 
 \vspace{15pt}
@@ -153,9 +153,9 @@ Those pointer assignments are termed as Constraints.
 Constraint is single basic pointer assignment in a source program.
 Constraint has the following information:
 \begin{itemize}
-	\item<2-> LHS pointer
-	\item<3-> RHS pointer
-	\item<4-> and type of assignments
+    \item<2-> LHS pointer
+    \item<3-> RHS pointer
+    \item<4-> and type of assignments
 \end{itemize}
 \end{frame}
 
@@ -163,10 +163,10 @@ Constraint has the following information:
 \frametitle{Types of constraints}
 
 \begin{itemize}
-	\item<1-> Address of. For e.g a = \&b
-	\item<2-> Copy. For e.g. a = b
-	\item<3-> Load. For e.g. a = *b
-	\item<4-> Store. For e.g. *a = b
+    \item<1-> Address of. For e.g a = \&b
+    \item<2-> Copy. For e.g. a = b
+    \item<3-> Load. For e.g. a = *b
+    \item<4-> Store. For e.g. *a = b
 \end{itemize}
 
 \end{frame}
@@ -248,9 +248,204 @@ It handles all types of assignments present in the LLVM IR.
 
 \end{frame}
 
-\section{Using the library}
 \begin{frame}
-\frametitle{Using the library}
+\frametitle{ConstraintGen library continued...}
+
+Information about every pointer is stored in \textbf{PointsToNode} data structure.
+% This data structure stores information like Type information, corresponding LLVM value
+% from which this node was created.
+
+\vspace{15pt}
+\pause
+Every node is assigned a unique ID. % which is an unsigned int
+
+\vspace{15pt}
+\pause
+Multiple constraints are possible from single LLVM instruction.
+\begin{itemize}
+    \item select instruction
+    \item extractvalue instruction
+    \item insertvalue instruction
+    \item phi instruction
+\end{itemize}
+
+\vspace{15pt}
+\pause
+Context and Flow Insensitive
+% Hence constraints can be generated independently.
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Constraints generated by the Library}
+Constraints generated by library have following properties,
+\begin{itemize}
+    \item<1-> ID of the LHS Node
+    \item<2-> ID of the RHS Node
+    \item<3-> Type of the constraint
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Examples}
+
+\begin{columns}
+
+\begin{column}{0.5\textwidth}
+\begin{lstlisting}
+define void @f() {
+    %a = alloca i32
+    ret void
+}
+\end{lstlisting}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\begin{lstlisting}
+    1 = & 0
+\end{lstlisting}
+
+\end{column}
+
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Examples}
+
+\begin{columns}
+
+\begin{column}{0.5\textwidth}
+\vspace{12pt}
+\begin{lstlisting}
+define void @f() {
+    %a = alloca i32
+    %b = alloca i32*
+    store i32* %a, i32** %b
+    ret void
+}
+\end{lstlisting}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\begin{lstlisting}
+    1 = & 0
+    3 = & 2
+    * 3 = 1
+\end{lstlisting}
+
+\end{column}
+
+\end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Examples}
+
+define void @foo \(\) \{ \\
+\hspace{15pt} \green \%a = alloca \{ i32*, i32 \} \\
+\hspace{15pt} \normalcolor   \%b = alloca i32 \\
+\hspace{15pt}    \%1 = getelementptr \{ i32*, i32 \}, \\
+\hspace{30pt}            \{i32*, i32\}* \%a, i32 0, i32 0 \\
+\hspace{15pt}    store i32* \%b, i32** \%1 \\
+\hspace{15pt}    ret void \\
+\}
+
+\vspace{15pt}
+Constraints:\\
+\green 1 = \& 0 \\
+\normalcolor    3 = \& 2 \\
+    6 = \& 4 uses: \{ 1, 5, 5 \} \\
+    * 6 = 3 \\
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Examples}
+
+define void @foo \(\) \{ \\
+\hspace{15pt}  \%a = alloca \{ i32*, i32 \} \\
+\hspace{15pt} \green   \%b = alloca i32 \\
+\hspace{15pt} \normalcolor   \%1 = getelementptr \{ i32*, i32 \}, \\
+\hspace{30pt}            \{i32*, i32\}* \%a, i32 0, i32 0 \\
+\hspace{15pt}    store i32* \%b, i32** \%1 \\
+\hspace{15pt}    ret void \\
+\}
+
+\vspace{15pt}
+Constraints:\\
+ 1 = \& 0 \\
+\green    3 = \& 2 \\
+\normalcolor    6 = \& 4 uses: \{ 1, 5, 5 \} \\
+    * 6 = 3 \\
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Examples}
+
+define void @foo \(\) \{ \\
+\hspace{15pt}  \%a = alloca \{ i32*, i32 \} \\
+\hspace{15pt}    \%b = alloca i32 \\
+\hspace{15pt} \green   \%1 = getelementptr \{ i32*, i32 \}, \\
+\hspace{30pt}      \{i32*, i32\}* \%a, i32 0, i32 0 \\
+\hspace{15pt}  \normalcolor  store i32* \%b, i32** \%1 \\
+\hspace{15pt}    ret void \\
+\}
+
+\vspace{15pt}
+Constraints:\\
+ 1 = \& 0 \\
+    3 = \& 2 \\
+\green    6 = \& 4 uses: \{ 1, 5, 5 \} \\
+\normalcolor    * 6 = 3 \\
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Examples}
+
+define void @foo \(\) \{ \\
+\hspace{15pt}  \%a = alloca \{ i32*, i32 \} \\
+\hspace{15pt}    \%b = alloca i32 \\
+\hspace{15pt}    \%1 = getelementptr \{ i32*, i32 \}, \\
+\hspace{30pt}      \{i32*, i32\}* \%a, i32 0, i32 0 \\
+\hspace{15pt} \green   store i32* \%b, i32** \%1 \\
+\hspace{15pt}  \normalcolor  ret void \\
+\}
+
+\vspace{15pt}
+Constraints:\\
+ 1 = \& 0 \\
+    3 = \& 2 \\
+    6 = \& 4 uses: \{ 1, 5, 5 \} \\
+\green * 6 = 3 \\
+\end{frame}
+
+\begin{frame}
+\frametitle{Integrating the library}
+
+\begin{itemize}
+    \item<1-> Inside the tests directory of the ConstraintGen library
+    \item<2-> Using the library inside the Analysis code
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Conclusion}
+\begin{itemize}
+    \item<1-> Covers requirements of the most of the Points-to Analysis
+    \item<2-> Has been used in implementation of GPG Analysis
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+
+\huge Thank you...
 \end{frame}
 
 \end{document}
