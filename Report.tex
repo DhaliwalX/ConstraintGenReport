@@ -489,6 +489,14 @@ library.
 
 \paragraph{Example 1}
 
+\begin{minted}[fontsize=\footnotesize]{c}
+void f() {
+    int a;
+}
+\end{minted}
+
+\noindent
+LLVM IR,
 \begin{minted}[fontsize=\footnotesize]{llvm}
 define void @f() {
     %a = alloca i32
@@ -502,6 +510,18 @@ Corresponding constraints,
 \end{lstlisting}
 
 \paragraph{Example 2}
+
+
+\begin{minted}[fontsize=\footnotesize]{c}
+void f() {
+    int a;
+    int *b;
+    b = &a;
+}
+\end{minted}
+
+\noindent
+LLVM IR,
 \begin{minted}[fontsize=\footnotesize]{llvm}
 define void @f() {
     %a = alloca i32
@@ -519,6 +539,16 @@ Corresponding constraints,
 \end{lstlisting}
 
 \paragraph{Example 3}
+
+\begin{minted}[fontsize=\footnotesize]{c}
+void f() {
+    int *b;
+    b;
+}
+\end{minted}
+
+\noindent
+LLVM IR,
 \begin{minted}[fontsize=\footnotesize]{llvm}
 define void @f() {
     %b = alloca i32*
@@ -535,8 +565,24 @@ Corresponding constraints,
 
 \paragraph{Example 4}
 
+\begin{minted}[fontsize=\footnotesize]{c}
+struct A {
+    int *x;
+    int y;
+};
+
+void foo() {
+    struct A a;
+    int b;
+    a.x = &b;
+
+}
+\end{minted}
+
+\noindent
+LLVM IR,
 \begin{minted}[fontsize=\footnotesize]{llvm}
-define void @foo () {
+define void @foo() {
     %a = alloca { i32*, i32 }
     %b = alloca i32
     %1 = getelementptr { i32*, i32 }, {i32*, i32}* %a, i32 0, i32 0
@@ -551,6 +597,143 @@ Corresponding constraints,
 3 = & 2
 6 = & 4 uses: { 1, 5, 5 }
 * 6 = 3
+\end{lstlisting}
+
+\paragraph{Special Example 1}
+
+\begin{minted}[fontsize=\footnotesize]{c}
+void f() {
+    int *a = nullptr;
+}
+\end{minted}
+
+\noindent
+LLVM IR,
+
+\begin{minted}[fontsize=\footnotesize]{llvm}
+define void @foo() {
+    %a = alloca i32*
+    store i32* null, i32** %a
+    ret void
+}
+\end{minted}
+
+\noindent
+Corresponding constraints,
+
+\begin{lstlisting}
+1 = & 0
+* 1 = 2
+\end{lstlisting}
+
+In the above example, LLVM uses special keyword for representing null pointers.
+This null is different for every pointer type. So \texttt{i32* null} is different
+from \texttt{i32** null}.
+
+\paragraph{Special Example 2}
+\begin{minted}[fontsize=\footnotesize]{c}
+void f() {
+    int *a = (int*)malloc(sizeof(int));
+}
+\end{minted}
+
+\noindent
+LLVM IR,
+
+\begin{minted}[fontsize=\footnotesize]{llvm}
+define void @f() {
+entry:
+  %a = alloca i32*
+  %call = call i8* @malloc(i64 4)
+  %0 = bitcast i8* %call to i32*
+  store i32* %0, i32** %a
+  ret void
+}
+
+\end{minted}
+
+\noindent
+Corresponding constraints,
+
+\begin{lstlisting}
+    1 = & 0
+    2 = 3
+    * 1 = 2
+
+    where,
+    0: DummyNode
+    1: %a
+    2: %0
+    3: %call
+\end{lstlisting}
+
+\section{Globals handling}
+Global variables define regions of memory allocated at compilation time instead
+of run-time. Global variables always define a pointer to their ``content'' type
+because they describe a region of memory, and all memory objects in LLVM are
+accessed through pointers. For e.g. following examples creates a global integer.
+
+\begin{minted}[fontsize=\footnotesize]{llvm}
+    @g = global i32 0 
+\end{minted}
+
+
+\noindent
+Here \texttt{@g} has type \texttt{i32*}.
+
+In IR, globals are used just like another pointers. Except they have prefix of
+``@'' instead of usual ``\%''.
+
+\noindent
+Some examples,
+\begin{minted}[fontsize=\footnotesize]{c}
+int a = 10;
+int *b;
+
+int main() {
+    int *c = &a;
+    b = c;
+    return 0;
+}
+\end{minted}
+
+\noindent
+LLVM IR,
+
+\begin{minted}[fontsize=\footnotesize]{llvm}
+@a = global i32 10
+@b = common global i32* null
+
+define i32 @main() {
+entry:
+  %retval = alloca i32, align 4
+  %c = alloca i32*, align 8
+  store i32 0, i32* %retval, align 4
+  store i32* @a, i32** %c, align 8
+  %0 = load i32*, i32** %c, align 8
+  store i32* %0, i32** @b, align 8
+  ret i32 0
+}
+\end{minted}
+
+\noindent
+Corresponding constraints,
+
+\begin{lstlisting}
+    1 = & 0
+    3 = & 2
+    * 3 = 4
+    5 = * 3
+    * 6 = 5
+
+where,
+0: DummyNode
+1: %retval
+2: DummyNode
+3: %c
+4: @a
+5: %0
+6: @b
 \end{lstlisting}
 
 \chapter{Implementation Details}
@@ -626,7 +809,7 @@ also provides public methods to generates ID's for LLVM pointers. Details about 
 \centering
 \caption{ConstraintBuilder}
 \label{constraint-builder}
-\begin{tabular}{|l|l|p{5cm}|}
+\begin{tabular}{|l|l|p{8cm}|}
 \hline
 getConstraint  & std::vector\textless Constraint\textgreater & takes an llvm::Instruction pointer and returns a list of constraints. \\ \hline
 generateId     & NodeIndex                                  & takes an llvm::Value pointer and returns the ID of that value.        \\ \hline
@@ -643,7 +826,7 @@ generate ID's. Member details of this class are in Table \ref{pointer-symbol-tab
 \centering
 \caption{PointerSymbolTable}
 \label{pointer-symbol-table}
-\begin{tabular}{|l|l|p{5cm}|}
+\begin{tabular}{|l|l|p{8cm}|}
 \hline
 getValue & PointsToNode* & returns a PointsToNode object corresponding to an ID. \\ \hline
 createPointerNode & NodeIndex & creates a new PointsToNode object and stores it in a map and returns the ID of that object. \\ \hline
@@ -762,6 +945,111 @@ In case of \texttt{ptrtoint} and \texttt{inttoptr} instruction, constraints
 will be missed. For example, if a pointer is casted to an integer and then casted
 back to pointer then there will be information missing about the operations on that
 integer.
+
+\chapter{Appendix}
+\appendix
+\section{Google C++ Testing Framework}
+Google C++ Testing Framework \cite{Gtest} is a unit testing framework designed by google for easier
+testing of C++ code. Tests written using this framework are,
+
+\begin{itemize}
+    \item Independent and Repeatable
+    \item Well organized
+    \item Portable and Reusable
+    \item Provides much information if a test fails
+    \item Fast
+\end{itemize}
+
+To write a test program using Google Test, first compile Google Test
+into a library and link the test with it.
+
+Test uses assertions, statements that check whether a condition is true or not,
+to verify the tested code's behavior. An assertion's result can be success, nonfatal
+failure or fatal failure. If a fatal failure occurs, the framework aborts the function;
+otherwise the program continues.
+
+A test case contains one or many tests. Tests can be grouped into test cases
+that reflect the structure of the tested code. When multiple tests in a test case
+need to share common objects and subroutines, then tests can be put into
+a test fixture class.
+
+Much of the details are provided in the online documentation on the project website
+\cite{Gtest}.
+
+\subsubsection{Example}
+Consider a function \texttt{Factorial} which needs to be tested,
+
+\begin{minted}[fontsize=\footnotesize]{c++}
+int Factorial(int n); // Returns the factorial of n
+\end{minted}
+
+A test case for this function will look like,
+
+\begin{minted}[fontsize=\footnotesize]{c++}
+// Tests factorial of 0.
+TEST(FactorialTest, HandlesZeroInput) {
+  EXPECT_EQ(1, Factorial(0));
+}
+
+// Tests factorial of positive numbers.
+TEST(FactorialTest, HandlesPositiveInput) {
+  EXPECT_EQ(1, Factorial(1));
+  EXPECT_EQ(2, Factorial(2));
+  EXPECT_EQ(6, Factorial(3));
+  EXPECT_EQ(40320, Factorial(8));
+}
+\end{minted}
+
+\section{Type iteration in LLVM}
+LLVM provides a set of API's to iterate over types. Type can be
+recursive in LLVM. The instances of the Type class are immutable: once they are
+created, they are never changed. Also note that only one instance of a
+particular type is ever created. Thus seeing if two types are equal is a matter
+of doing a trivial pointer comparison. Consider the following type,
+
+\begin{minted}[fontsize=\footnotesize]{c}
+struct A {
+    int x;
+    char ch;
+};
+
+struct B {
+    struct A a;
+    int y;
+};
+\end{minted}
+
+Below is the LLVM representation,
+\begin{minted}[fontsize=\footnotesize]{llvm}
+%structA = type { i32, i8 }
+%structB = type { %structA, i32 }
+\end{minted}
+
+Here is the visual representation of the above type,
+
+\begin{center}
+\includegraphics[scale=0.5]{output}
+\end{center}
+
+\noindent
+So the simple graph traversal algorithm can be used for iterating on the
+subtypes.
+
+\noindent
+For e.g below is the code for traversal over above type
+
+\begin{minted}[fontsize=\footnotesize]{c++}
+    std::set<Type*> visited_;
+
+    void printSubType(Type *type) {
+        errs() << *type << "\n";
+
+        for (Type *subtype : type) {
+            printSubType(subtype);
+        }
+    }
+
+\end{minted}
 
 \bibliography{References}
 \bibliographystyle{ieeetr}
