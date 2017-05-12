@@ -69,6 +69,8 @@ LLVM IR.
 
 \tableofcontents
 
+\listoftables
+
 \chapter{Introduction}
 
 A number of points-to analysis have been developed like Andersen's Analysis
@@ -78,22 +80,21 @@ analysis have one thing in common that they depend upon some common properties o
 the pointers  present in the source code of a program. These properties include
 information like the assignments to the pointers, type information, or level
 of indirection. This information can represented in the form of set of constraints.
-These constraints correspond to the assignments in the source code. Only those 
-assignments matter in which there is write to a pointer location.
+A single constraint represents a single assignment in the source code.
 
 This library tries to extract this type of information in form of constraints 
-from LLVM IR. It provides set of well defined APIs for generating constraints 
+from LLVM IR. It provides a set of well defined APIs for generating constraints 
 from LLVM IR.
 
 \section{Motivation}
 Most of the points-to analyses depend only on the pointer assignments in
 the source code. Other assignments for such analyses doesn't matter because
 they do not affect pointers. For implementing these analyses, the
-first step would be to extract these assignments and their constraints from
-the IR which is quite a waste of time if someone has to write a number of such analysis. So instead of
-wasting time on writing code for extracting these statements, this library 
-provides an API for doing so easily. The implementer now only has to focus on 
-implementing the analysis.
+first step would be to extract these assignments. It would be quite a waste of time
+to write code for the same if someone has to write a number of such analysis.
+So instead of wasting time on writing code for extracting these statements,
+this library provides an API for doing so easily. The implementer now only
+has to focus on implementing the analysis.
 
 This library has been designed keeping in mind the forward and backward
 analysis and top-down and bottom-up analyses. So it generates constraint
@@ -103,36 +104,29 @@ without depending on the flow or context information.
 
 constraint-gen library is designed to generate Points-to constraints from the
 LLVM Intermediate Code. In order to generate the constraints, it classifies the
-various LLVM IR instructions into four basic pointer assignments as described 
-in Section 2.2. This library considers only those LLVM IR statements which are
+LLVM IR instructions into four primitive pointer assignments as described 
+in Section 2.2. Only those LLVM IR statements are considered which are
 relevant for \textit{Points-to Analysis} i.e. only those instructions in which 
-there is write to a pointer location. The library considers each pointer statement in the 
-program independently. This each constraint is independent and is not 
-influenced by control flow or call context. So, if someone want to do a 
-forward flow analysis or backward flow analysis, or Context sensitive or 
+there is write to a pointer location. The library treats every statement in the
+program independently. Thus constraints generated are independent and are not 
+affected by control flow or context. So, if someone wants to do a 
+forward flow analysis or backward flow analysis, or context sensitive or 
 insensitive, this library will be helpful.
 
-
 \section{Design}
-The design of this library is motivated by the fact that most of the points-to 
-analysis depends on the pointers used in the source code. So it is designed 
-such that it can cover the requirements of the most of the Points-to analyses.
-
-All the information about a variable is stored in a Points-to Node 
-(PointsToNode in implementation). Internally this library creates a mapping 
-between those PointsToNode and LLVM's Value (every variable or instruction is 
-represented by this Value). Each Points-to node is assigned a unique id. This 
+The library is designed such that it can cover the requirements of the most of the
+points-to analysis. Every variable in the source code is represented by a single data
+structure known as \texttt{PointsToNode}. Internally this library maintains a mapping 
+between those \texttt{PointsToNode} and LLVM's \texttt{Value} (every variable or instruction is 
+represented by this \texttt{Value}). Each \texttt{PointsToNode} is assigned a unique id. This 
 id is an unsigned integer. Each constraint represents a single assignment in 
 the IR. Section 2.3 discusses more about implementation level details 
-of a single constraint.
-
-This library tries to simplify the complex LLVM IR statements into four basic 
-pointer assignments. Section 2.2 discusses about the classification of LLVM IR 
-statements.
+of a single constraint. So instead of using the actual PointsToNode object at
+multiple places only ID can be used. It also helps in debugging and keeps low
+memory footprint.
 
 \section{Classification of LLVM Instructions}
-Following four basic categories are used to classify the relevant LLVM 
-Instructions:
+Following four basic categories are used to classify the LLVM instructions:
 
 \begin{itemize}
     \item Address Of Instructions, e.g. a = \&b
@@ -159,8 +153,6 @@ Example,
 \begin{minted}[fontsize=\footnotesize]{llvm}
 %a = alloca i32, i32 4
 %x = getelementptr i32, i32* %a, i32 1   ;select second element                 
- 
-                       
 \end{minted}
 
 \noindent
@@ -185,16 +177,14 @@ Following statements are classified as address-of instructions
 
 \subsection{Load Instructions}
 Load instructions are those assignments in which the address stored at the 
-location pointed by a pointer is assigned to another pointer. So, we are 
-basically dereferencing the pointer which points to another pointer and address 
-stored in that pointer is assigned to other variable/pointer.
-load instruction in LLVM can be used to represent following C statement,
+location pointed by a pointer is assigned to another pointer.
+Load instructions in LLVM can be represented using following C statement,
 \begin{lstlisting}
     a = *b
 \end{lstlisting}
 
 \noindent
-Load instruction in LLVM takes an address and reads memory from that address,
+Load instructions in LLVM take an address and read memory from that address,
 e.g.,
 
 \begin{minted}[fontsize=\footnotesize]{llvm}
@@ -215,7 +205,7 @@ Instruction that satisfies this type is,
 \subsection{Store Instructions}
 Store instructions are those assignments in which address stored in a pointer 
 is assigned to the location pointed by another pointer.
-store instruction in LLVM is equivalent to following C statement,
+Store instructions in LLVM is equivalent to following C statement,
 \begin{lstlisting}
     *a = b
 \end{lstlisting}
@@ -254,7 +244,8 @@ from one SSA variable to another. For e.g. in phi instruction
 \noindent
 It is equivalent to the following C statement,
 \begin{lstlisting}
-    a = b;
+    b = a;
+    b = c;
 \end{lstlisting}
 
 \noindent
@@ -270,7 +261,7 @@ More details about the constraint being generated for each instruction are
 mentioned in next section.
 
 \section{Constraints and their Generation}
-Constraints are the information about the pointers assignemnts used in a 
+Constraints are the information about the pointers assignments used in a 
 particular IR statement. A single constraint refers to a single possible 
 assignment. This assignment can be one of above four type. Each constraint has 
 the following properties,
@@ -737,11 +728,21 @@ where,
 \end{lstlisting}
 
 \chapter{Implementation Details}
-In this chapter, implementation level details of this are provided. Various 
-data structures used and APIs provided are explained in the next sections.
+In this chapter, implementation level details of this library are provided. Various 
+data structures used and important APIs are explained in the following sections.
 
 The whole project is maintained using git. Project repository is hosted using
-GitHub \cite{GitHub}.
+GitHub \cite{GitHub}. Following is the directory structure of the project,
+
+\begin{itemize}
+  \item cmake/      Important cmake modules required for building library
+  \item docs/       Documentation
+  \item include/    The public interface to the library
+  \item samples/    Sample C code for testing and debugging
+  \item src/        Implementation of the library
+  \item tests/      Test code
+  \item utils/      Small utility libraries
+\end{itemize}
 
 \section{Data Structures}
 In this section, various classes and their properties used in the library are 
@@ -1054,4 +1055,3 @@ For e.g below is the code for traversal over above type
 \bibliography{References}
 \bibliographystyle{ieeetr}
 \end{document}
-
