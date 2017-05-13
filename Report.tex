@@ -7,6 +7,7 @@
 \usepackage{float}
 \usepackage{color}
 \usepackage{amsmath}
+\usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{blindtext}
 \usepackage{pstricks}
@@ -16,6 +17,7 @@
 \usepackage{pst-text}
 \usepackage{minted}
 \usepackage{etex}
+\usepackage{multicol}
 \usepackage{url}
 \usepackage{float}
 \usepackage[letterpaper, margin=1in]{geometry}
@@ -43,11 +45,12 @@
 
 
     \vspace{2cm}
-    \textbf{Pushpinder Singh}\\
-    (PEC University of Technology)\\
+    \textbf{Pushpinder Singh (14103088)}\\
+    Computer Science Department,\\
+    PEC University of Technology\\
 
     ~\\
-    Under the guidance of\\
+    \textit{Under the guidance of}\\
     \textbf{Prof. Uday Khedker}\\
     Computer Science Department,\\
     IIT Bombay
@@ -55,6 +58,30 @@
     \vspace*{\fill}
 \end{center}
 \end{titlepage}
+
+~\\
+\vspace{2cm}
+\begin{center}
+\large{DECLARATION}
+\end{center}
+\vspace{1cm}
+
+I here by declare that the project report entitled \textit{Constraint Generation Library for LLVM}
+submitted by me to PEC University of Technology, Chandigarh in partial fullfillment of the
+requirement for the award of the degree of B.Tech. in Computer Science \& Engineering is
+a record of bonfide project work carried out by me under the guidance of Prof. Uday Khedker,
+Department of Computer Science, IIT Bombay.
+I further declare that the work reported in this project has not been submitted and will not
+be submitted, either in part or in full, for the award of any other degree or diploma in this
+institute or any other institute or university.
+
+\vspace{2cm}
+
+\begin{flushright}
+Signature of the candidate\\
+(Pushpinder Singh)
+\end{flushright}
+Date: 13 May, 2017
 
 
 \begin{abstract}
@@ -134,6 +161,22 @@ Following four basic categories are used to classify the LLVM instructions:
     \item Store Instructions, e.g. *a = b
     \item Copy Instructions, e.g. a = b
 \end{itemize}
+
+Following assignments can easily modelled using the above basic statements,
+
+\begin{table}[H]
+\centering
+\caption{Assignments modelled using base assignments}
+\label{my-label}
+\begin{tabular}{|p{5cm}|p{5cm}|p{5cm}|}
+\hline
+
+y = x-\textgreater f & y = (x-\textgreater f) & a = b \\ \hline
+x-\textgreater f = y & \begin{tabular}[c]{@{}l@{}}t = \&(x-\textgreater f)\\ *t = y\end{tabular} & t = \&a; *t = b \\ \hline
+y = x.f             & y = (x.f) & a = b \\ \hline
+x.f = y             & \begin{tabular}[c]{@{}l@{}}t = \&(x.f)\\ *t = y\end{tabular} & t = \&a; *t = b;
+\end{tabular}
+\end{table}
 
 \subsection{Address Of Instructions}
 Address of instructions are those instructions which refers to the assignment 
@@ -922,6 +965,69 @@ opt -load build/lib/libNameOfYourAnalysis.so -your-analysis-option test.ll
 
 Examples have been provided in the \texttt{tests} directory.
 
+\section{Example pass}
+\begin{minted}[fontsize=\footnotesize]{c++}
+#include "llvm/Pass.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/Support/raw_ostream.h"
+
+#include "ConstraintBuilder.h"
+
+/* For storing the constraints */
+#include <vector>
+
+using namespace llvm;
+using namespace ptsto;
+
+namespace {
+
+struct ConstraintGen : public ModulePass {
+    static char ID;
+
+    std::vector<Constraint> constraints_;
+
+    void print(raw_ostream &os, const Module */**/) const override {
+        for (const auto &constraint : constraints_) {
+            constraint.dump(os);
+        }
+    }
+
+    ConstraintGen() : ModulePass(ID) { }
+
+    bool runOnModule(Module &module) override {
+        ConstraintBuilder builder;
+
+        for (Function &f : module) {
+            for (BasicBlock &bb : f) {
+                 for (Instruction &i : bb) {
+                    Constraint c = builder.getConstraint(&i);
+                    if (c == kInvalidConstraint) {
+                        continue;
+                    }
+
+                    constraints_.push_back(c);
+                }
+            }
+        }
+        return false;
+    }
+};
+
+}
+
+// static
+char TestPass:ID = 0;
+
+// registration of pass
+static RegisterPass<TestPass> X("test-pass", // command line option
+                                "A short description",
+                                false, // looks at CFG only
+                                false  // doesn't modify anything
+                                );
+\end{minted}
+
 \section{Integrating constraint-gen library inside the source tree of the analysis}
 In case analysis is large, then the constraint-gen library can be included directly inside
 the source tree of the analysis. But this involves writing all the CMakeLists.txt files.
@@ -949,6 +1055,202 @@ integer.
 
 \chapter{Appendix}
 \appendix
+
+\section{Writing a pass in LLVM}
+This section describes how to write an LLVM pass.
+
+\subsection{Writing a simple Hello World pass}
+Example shown here is taken from LLVM's official documentation on writing pass \cite{llvm-pass}. 
+In your pass directory, create the following CMakeLists.txt file,
+
+\begin{minted}[fontsize=\footnotesize]{cmake}
+cmake_minimum_required(VERSION 3.1)
+
+find_package(LLVM CONFIG REQUIRED)
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include(LLVMConfig)
+
+add_library(HelloWorldPass MODULE
+            HelloWorldPass.cc
+)
+
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+
+target_compile_features(HelloWorldPass PRIVATE cxx_range_for cxx_auto_type)
+
+set_target_properties(HelloWorldPass PROPERTIES
+    COMPILE_FLAGS "-fno-rtti -g"
+)
+\end{minted}
+
+Every pass written for LLVM inherits from one of the \texttt{ModulePass}, \texttt{FunctionPass},
+\texttt{BasicBlockPass} or \texttt{CallGraphPass}. It depends on what your pass is doing. This example
+writes a pass that runs over function hence it inherits from \texttt{FunctionPass}.
+It runs over every function and prints the name of the function to the terminal.
+
+Following is the code for the HelloWorldPass.cc,
+
+\begin{minted}[fontsize=\footnotesize]{c++}
+#include <llvm/IR/Instruction.h>
+#include <llvm/Pass.h>
+#include <llvm/IR/Function.h>
+#include <llvm/Support/raw_ostream.h>
+
+using namespace llvm;
+
+namespace {
+
+// A simple hello world pass that prints hello: <name of function>
+struct HelloWorldPass : FunctionPass {
+    static char ID;
+
+    HelloWorldPass() : FunctionPass(ID)
+    { }
+
+    bool runOnFunction(Function &function) override {
+        errs() << "Hello: " << function.getName() << "\n";
+        return false;
+    }
+};
+
+char HelloWorldPass::ID = 0;
+
+}
+
+RegisterPass<HelloWorldPass> X("hello",
+                                "Simple hello world pass",
+                                false,
+                                false);
+
+\end{minted}
+
+This pass can be compiled by following steps,
+\begin{minted}[fontsize=\footnotesize]{shell}
+mkdir build
+cd build
+cmake ..
+\end{minted}
+
+\texttt{libHelloWorldPass.so} will be built in the \texttt{build} directory. This pass
+can be loaded into the LLVM using the \texttt{opt} tool provided in the LLVM package.
+
+Command to run this pass,
+\begin{minted}[fontsize=\footnotesize]{shell}
+opt -load ./libHelloWorldPass.so -hello a.ll
+\end{minted}
+
+This pass will run for every function in a.ll by LLVM and will output the name of
+the function to the terminal.
+
+\subsection{Writing an LLVM pass that counts the number of instructions}
+In this section, the hello world pass written in the previous section will be extended
+to count the number of instructions present in the source code.
+
+\begin{minted}[fontsize=\footnotesize]{c++}
+#define DEBUG_TYPE "counter"
+#include <llvm/Pass.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/ADT/Statistic.h>
+
+using namespace llvm;
+
+// STATISTIC is an LLVM API for doing stats related functions
+STATISTIC(counter, "Number of instructions");
+
+namespace {
+// simple pass that counts the number of instructions in the IR
+// use -stats option to print the number
+struct CountInstructionsPass : public BasicBlockPass {
+    static char ID;
+
+    CountInstructionsPass() : BasicBlockPass(ID) { }
+
+    bool runOnBasicBlock(BasicBlock &bb) override {
+        for (const auto &i : bb) {
+            counter++;
+        }
+        return false;
+    }
+};
+
+char CountInstructionsPass::ID = 0;
+
+}
+
+RegisterPass<CountInstructionsPass> X("count_instructions",
+                                    "Counts the number of instructions",
+                                    false,
+                                    false);
+
+\end{minted}
+
+This pass can be run as follows,
+
+\begin{minted}[fontsize=\footnotesize]{shell}
+opt -load ./libHelloWorldPass -count_instructions -stats a.ll
+\end{minted}
+
+This will count the number of instructions present in the a.ll module. \texttt{-stats} option
+will print the number on the terminal.
+
+\subsection{Writing an LLVM pass that runs on call graph}
+This section describes important LLVM API's that can be used to access the call graph.
+LLVM provides \texttt{CallGraphSCCPass} which can be used as to traverse the call graph
+in bottom-up manner \cite{llvm-call-graph}.
+
+\begin{quote}
+\textit{The \texttt{CallGraphSCCPass} is used by passes that need to traverse the program bottom-up on the call graph (callees before callers). Deriving from \texttt{CallGraphSCCPass} provides some mechanics for building and traversing the CallGraph, but also allows the system to optimize execution of \texttt{CallGraphSCCPass}es. If your pass meets the requirements outlined below, and doesn’t meet the requirements of a FunctionPass or BasicBlockPass, you should derive from \texttt{CallGraphSCCPass}.
+\\
+To be explicit, \texttt{CallGraphSCCPass} subclasses are:\\
+\hspace{15pt}... not allowed to inspect or modify any Functions other than those in the current SCC and the direct callers and direct callees of the SCC.\\
+\hspace{15pt}... required to preserve the current CallGraph object, updating it to reflect any changes made to the program.\\
+\hspace{15pt}... not allowed to add or remove SCC’s from the current Module, though they may change the contents of an SCC.\\
+\hspace{15pt}... allowed to add or remove global variables from the current Module.\\
+\hspace{15pt}... allowed to maintain state across invocations of runOnSCC (including global data).\\
+\\
+Implementing a \texttt{CallGraphSCCPass} is slightly tricky in some cases because it has to handle SCCs with more than one node in it. All of the virtual methods described below should return true if they modified the program, or false if they didn’t.
+}
+\end{quote}
+
+Following is a simple example of using \texttt{CallGraphSCCPass} to traverse the call-graph of llvm.
+
+\begin{minted}[fontsize=\footnotesize]{c++}
+#include <llvm/Analysis/CallGraphSCCPass.h>
+#include <llvm/Analysis/CallGraph.h>
+#include <llvm/IR/Argument.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Pass.h>
+#include <llvm/Support/raw_ostream.h>
+
+using namespace llvm;
+
+class SimplePass : public CallGraphSCCPass {
+public:
+    static char ID;
+
+    SimplePass() : CallGraphSCCPass(ID) {}
+
+    bool runOnSCC(CallGraphSCC &SCC) override {
+        for (CallGraphNode *node : SCC) {
+            if (node->getFunction() == nullptr)
+                continue;
+
+            errs() << node->getFunction()->getName() << "\n";
+         }
+    }
+};
+char SimplePass::ID = 8;
+
+static RegisterPass<SimplePass> gpganalysis("simple",
+                                             "Simple pass to traverse call graph",
+                                             false, false);
+\end{minted}
+
+Above pass traverses the call graph in a bottom-up manner and prints the name of the functions.
+
 \section{Google C++ Testing Framework}
 Google C++ Testing Framework \cite{Gtest} is a unit testing framework designed by google for easier
 testing of C++ code. Tests written using this framework are,
