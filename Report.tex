@@ -162,7 +162,7 @@ Following four basic categories are used to classify the LLVM instructions:
     \item Copy Instructions, e.g. a = b
 \end{itemize}
 
-Following assignments can easily modelled using the above basic statements,
+More complex assignments like those having structure access or heap access can be easily modelled using the above basic statements,
 
 \begin{table}[H]
 \centering
@@ -174,7 +174,7 @@ Following assignments can easily modelled using the above basic statements,
 y = x-\textgreater f & y = (x-\textgreater f) & a = b \\ \hline
 x-\textgreater f = y & \begin{tabular}[c]{@{}l@{}}t = \&(x-\textgreater f)\\ *t = y\end{tabular} & t = \&a; *t = b \\ \hline
 y = x.f             & y = (x.f) & a = b \\ \hline
-x.f = y             & \begin{tabular}[c]{@{}l@{}}t = \&(x.f)\\ *t = y\end{tabular} & t = \&a; *t = b;
+x.f = y             & \begin{tabular}[c]{@{}l@{}}t = \&(x.f)\\ *t = y\end{tabular} & t = \&a; *t = b; \\ \hline
 \end{tabular}
 \end{table}
 
